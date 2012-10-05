@@ -1,8 +1,13 @@
 if ENV["MODEL_ADAPTER"] == "mongo_mapper"
   require "spec_helper"
 
-  MongoMapper.connection = Mongo::Connection.new('localhost', 27017)
-  MongoMapper.database = "cancan_mongomapper_spec"
+  # for testing, set MONGODB_URI to a connection uri of the form:
+  # mongodb://[username:password@]hostname[:port]/database_name
+  ENV['MONGODB_URI'] ||= 'mongodb://localhost/cancan_mongomapper_spec'
+  MongoMapper.connection = Mongo::Connection.from_uri
+  uri = URI.parse(ENV['MONGODB_URI'])
+  MongoMapper.database = uri.path.sub(/^\//, '')
+  MongoMapper.database.authenticate uri.user, uri.password if uri.user
 
   class MongoMapperProject
     include MongoMapper::Document
