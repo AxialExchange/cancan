@@ -17,7 +17,7 @@ module CanCan
       end
 
       def self.matches_conditions_hash?(subject, conditions)
-        subject.class.where(conditions).include? subject
+        subject.class.where(conditions).where(:id => subject.id).exists?
       end
 
       def database_records
