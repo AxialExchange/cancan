@@ -21,25 +21,21 @@ module CanCan
       end
 
       def database_records
-        if @rules.size == 0
-          @model_class.where(:_id => {:$exists => false, :$type => 7}) # return no records
-        elsif @rules.size == 1
-          @model_class.where(@rules[0].conditions)
+        # if there are only 'cannot' rules (no 'can' rules), return criteria
+        # that won't return any documents
+        if @rules.none? {|rule| rule.base_behavior}
+          @model_class.where(:_id => {:$exists => false, :$type => 7})
         else
-          # we only need to process can rules if
-          # there are no rules with empty conditions
-          rules = @rules.reject { |rule| rule.conditions.empty? }
-          process_can_rules = @rules.count == rules.count
-          rules.inject(@model_class.where) do |records, rule|
-            if process_can_rules && rule.base_behavior
-              records.where rule.conditions
-            elsif !rule.base_behavior
-              records.remove rule.conditions
-              records
+          criteria = @rules.inject(@model_class.where) do |query, rule|
+            if rule.base_behavior
+              query.where(:$or => [rule.conditions])
             else
-              records
+              query.where(:$nor => [rule.conditions])
             end
-          end
+          end.criteria.to_hash
+          # wrap result in 'and', so chained 'or' won't be merged
+          criteria = {:$and => [criteria]}
+          @model_class.where(criteria)
         end
       end
     end

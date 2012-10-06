@@ -97,6 +97,17 @@ if ENV["MODEL_ADAPTER"] == "mongo_mapper"
         @ability.can :read, MongoMapperProject
         @ability.cannot :read, MongoMapperProject, :bar => 2
         MongoMapperProject.accessible_by(@ability, :read).entries.should == [obj]
+        MongoMapperProject.count.should == 2
+      end
+
+      it "should combine can and cannot rules" do
+        obj = MongoMapperProject.create(:bar => 1)
+        obj2 = MongoMapperProject.create(:bar => 2)
+        obj3 = MongoMapperProject.create(:bar => 3)
+        @ability.can :read, MongoMapperProject, :bar => 1
+        @ability.cannot :read, MongoMapperProject, :bar => 2
+        MongoMapperProject.accessible_by(@ability, :read).entries.should == [obj]
+        MongoMapperProject.count.should == 3
       end
 
       it "should combine the rules" do
@@ -106,6 +117,26 @@ if ENV["MODEL_ADAPTER"] == "mongo_mapper"
         @ability.can :read, MongoMapperProject, :bar => 1
         @ability.can :read, MongoMapperProject, :bar => 2
         MongoMapperProject.accessible_by(@ability, :read).entries.should =~ [obj, obj2]
+      end
+
+      it "should return nothing if only cannot rules" do
+        obj = MongoMapperProject.create(:bar => 1)
+        obj2 = MongoMapperProject.create(:bar => 2)
+        @ability.cannot :read, MongoMapperProject, :bar => 2
+        query = MongoMapperProject.accessible_by(@ability, :read)
+        query.entries.should == []
+        MongoMapperProject.count.should == 2
+      end
+
+      it "should not allow chained criteria" do
+        obj = MongoMapperProject.create(:bar => 1)
+        obj2 = MongoMapperProject.create(:bar => 2)
+        @ability.can :read, MongoMapperProject, :bar => 1
+        query = MongoMapperProject.accessible_by(@ability, :read)
+        query.entries.should == [obj]
+        query.where(:bar.ne => 0).entries.should == [obj]
+        query.where(:bar => 2).entries.should == []
+        query.where(:$or => [{:bar => 2}]).entries.should == []
       end
 
     end
