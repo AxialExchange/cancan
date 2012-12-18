@@ -20,23 +20,39 @@ module CanCan
         subject.class.where(conditions).where(:id => subject.id).exists?
       end
 
+      def base_class
+        klass = @model_class
+        klass = klass.superclass while klass.single_collection_inherited?
+        klass
+      end
+
       def database_records
         # if there are only 'cannot' rules (no 'can' rules), return criteria
         # that won't return any documents
         if @rules.none? {|rule| rule.base_behavior}
-          @model_class.where(:_id => {:$exists => false, :$type => 7})
+          criteria = {:$nor => [{}]}
         else
-          criteria = @rules.inject(@model_class.where) do |query, rule|
+          criteria = @rules.inject(base_class.where) do |query, rule|
             if rule.base_behavior
               query.where(:$or => [rule.conditions])
             else
               query.where(:$nor => [rule.conditions])
             end
           end.criteria.to_hash
-          # wrap result in 'and', so chained 'or' won't be merged
-          criteria = {:$and => [criteria]}
-          @model_class.where(criteria)
+          # criteria with {} in the :$or part can be optimized away
+          or_criteria = criteria[:$or] || []
+          criteria.delete(:$or) if or_criteria.include?({})
+          # a single :$or can be optimized away
+          if or_criteria.size == 1
+            criteria.delete(:$or)
+            criteria.merge! or_criteria.first
+          end
+          # criteria with {} in the :$nor part can be optimized
+          criteria = {:$nor => [{}]} if criteria.include?(:$nor) && criteria[:$nor].include?({})
+          # wrap result 'and', so chained criteria won't be merged
+          criteria = {:$and => [criteria]} if criteria.any?
         end
+        @model_class.where(criteria)
       end
     end
   end

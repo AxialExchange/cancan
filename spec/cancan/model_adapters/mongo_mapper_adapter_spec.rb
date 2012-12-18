@@ -13,6 +13,9 @@ if ENV["MODEL_ADAPTER"] == "mongo_mapper"
     include MongoMapper::Document
   end
 
+  class MongoMapperSpecialProject < MongoMapperProject
+  end
+
   describe CanCan::ModelAdapters::MongoMapperAdapter, :focus => true do
     context "MongoMapper defined" do
       before(:each) do
@@ -128,7 +131,7 @@ if ENV["MODEL_ADAPTER"] == "mongo_mapper"
         MongoMapperProject.count.should == 2
       end
 
-      it "should not allow chained criteria" do
+      it "should not allow chained criteria to be merged" do
         obj = MongoMapperProject.create(:bar => 1)
         obj2 = MongoMapperProject.create(:bar => 2)
         @ability.can :read, MongoMapperProject, :bar => 1
@@ -137,6 +140,43 @@ if ENV["MODEL_ADAPTER"] == "mongo_mapper"
         query.where(:bar.ne => 0).entries.should == [obj]
         query.where(:bar => 2).entries.should == []
         query.where(:$or => [{:bar => 2}]).entries.should == []
+      end
+
+      it "should optimize empty abilities" do
+        criteria = MongoMapperProject.accessible_by(@ability, :read).criteria.to_hash
+        criteria.should == {:$nor => [{}]}
+      end
+
+      it "should optimize full abilities" do
+        @ability.can :read, MongoMapperProject
+        criteria = MongoMapperProject.accessible_by(@ability, :read).criteria.to_hash
+        criteria.should == {}
+      end
+
+      it "should optimize redundant full abilities" do
+        @ability.can :read, MongoMapperProject
+        @ability.can :read, MongoMapperProject, :foo => 1
+        criteria = MongoMapperProject.accessible_by(@ability, :read).criteria.to_hash
+        criteria.should == {}
+      end
+
+      it "should optimize can + cannot abilities" do
+        @ability.can :read, MongoMapperProject
+        @ability.cannot :read, MongoMapperProject, :foo => 1
+        criteria = MongoMapperProject.accessible_by(@ability, :read).criteria.to_hash
+        criteria.should == {:$and => [{:$nor => [{:foo => 1}]}]}
+      end
+
+      it "should optimize a single can ability" do
+        @ability.can :read, MongoMapperProject, :foo => 1
+        criteria = MongoMapperProject.accessible_by(@ability, :read).criteria.to_hash
+        criteria.should == {:$and => [{:foo => 1}]}
+      end
+
+      it "should not redundantly include :_type for single collection inheritance" do
+        @ability.can :read, MongoMapperSpecialProject
+        criteria = MongoMapperSpecialProject.accessible_by(@ability, :read).criteria.to_hash
+        criteria.should == {:_type => {"$in" => ['MongoMapperSpecialProject']}}
       end
 
     end
