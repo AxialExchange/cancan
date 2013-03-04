@@ -38,6 +38,10 @@ if ENV["MODEL_ADAPTER"] == "mongo_mapper"
         CanCan::ModelAdapters::MongoMapperAdapter.find(MongoMapperProject, project.id).should == project
       end
 
+      it "should raise an execption when finding a non-existent document" do
+        lambda { CanCan::ModelAdapters::MongoMapperAdapter.find(MongoMapperProject, 'NOSUCH') }.should raise_error(MongoMapper::DocumentNotFound)
+      end
+
       it "should compare properties on mongomapper documents with the conditions hash" do
         model = MongoMapperProject.new
         @ability.can :read, MongoMapperProject, :id => model.id

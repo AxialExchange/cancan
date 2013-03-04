@@ -5,6 +5,10 @@ module CanCan
         model_class <= MongoMapper::Document
       end
 
+      def self.find(model_class, id)
+        model_class.find!(id)
+      end
+
       def self.override_conditions_hash_matching?(subject, conditions)
         conditions.any? do |k,v|
           key_is_not_symbol = lambda { !k.kind_of?(Symbol) }
