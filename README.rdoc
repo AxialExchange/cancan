@@ -1,3 +1,6 @@
+Update by Ievgen on 18th of December, 2017:
+I can't see this project used anywhere on the BE. If you find out that this project is used, add a comment. If you find out it's not used in a hear from now, remove this project.
+
 = CanCan {<img src="https://secure.travis-ci.org/ryanb/cancan.png" />}[http://travis-ci.org/ryanb/cancan] {<img src="https://codeclimate.com/badge.png" />}[https://codeclimate.com/github/ryanb/cancan]
 
 Wiki[https://github.com/ryanb/cancan/wiki] | RDocs[http://rdoc.info/projects/ryanb/cancan] | Screencast[http://railscasts.com/episodes/192-authorization-with-cancan]
